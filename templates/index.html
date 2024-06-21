@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time IDS Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha512-Fo3rlrZj/kMVq73FQJ0GOpDBd2o6zZ7t9NOiFg1s3Gz5Vv7GgvBbGT5knl1h0kPYQ6jyRQO6sO8Z20eMGEFv5g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+
+    body {
+        font-family: 'Roboto', sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #f8f9fa;
+    }
+
+    h1 {
+        text-align: center;
+        margin-bottom: 40px;
+        font-size: 2.5em;
+        color: #343a40;
+    }
+
+    h2 {
+        text-align: center;
+        margin-bottom: 20px;
+        font-size: 1.8em;
+        color: #495057;
+    }
+
+    #current-time {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        font-size: 18px;
+        font-weight: bold;
+        color: #343a40;
+    }
+
+    .circle-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 40px;
+        gap : 100px;
+    }
+
+    .circle {
+        width: 250px;
+        height: 250px;
+        border-radius: 50%;
+        background-color: #fff;
+        border: 3px solid #000000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0 20px;
+        font-size: 24px;
+        font-weight: bold;
+        color: #000000;
+        box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease;
+    }
+
+    .circle:hover {
+        transform: scale(1.1);
+    }
+
+    #table-container {
+        margin: 0 auto;
+        width: 90%;
+        overflow-x: auto;
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 16px;
+    }
+
+    th, td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    th {
+        background-color: #e9ecef;
+        font-weight: 700;
+        color: #495057;
+    }
+
+    #dropdown-container {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    select {
+        padding: 10px;
+        font-size: 16px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        background-color: #fff;
+        color: #495057;
+        transition: border-color 0.3s ease;
+    }
+
+    select:focus {
+        border-color: #020202;
+        outline: none;
+    }
+
+    </style>
+</head>
+<body>
+    <div id="current-time"></div>
+    <h1>Real-Time IDS Dashboard</h1>
+    <div class="circle-container">
+        <div id="packetsCircle" class="circle">0</div>
+        <div id="blacklistCircle" class="circle">0</div>
+    </div>
+    
+    <div id="table-container">
+        <div id="dropdown-container">
+            <label for="numEntriesPackets">Show top packets:</label>
+            <select id="numEntriesPackets">
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="30">30</option>
+                <option value="40">40</option>
+                <option value="50" selected>50</option>
+                <option value="60">60</option>
+                <option value="70">70</option>
+                <option value="80">80</option>
+                <option value="90">90</option>
+                <option value="100">100</option>
+            </select>
+        <h2>Packets</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Source IP</th>
+                    <th>Destination IP</th>
+                    <th>Protocol</th>
+                    <th>Source Port</th>
+                    <th>Destination Port</th>
+                    <th>Payload</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="packetsTable">
+            </tbody>
+        </table>
+    </div>
+    
+    <div id="table-container">
+        <div id="dropdown-container">
+            <label for="numEntriesBlacklist">Show top blacklist:</label>
+            <select id="numEntriesBlacklist">
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="30">30</option>
+                <option value="40">40</option>
+                <option value="50" selected>50</option>
+                <option value="60">60</option>
+                <option value="70">70</option>
+                <option value="80">80</option>
+                <option value="90">90</option>
+                <option value="100">100</option>
+            </select>
+        </div>
+        <h2>Blacklist</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>IP</th>
+                </tr>
+            </thead>
+            <tbody id="blacklistTable">
+            </tbody>
+        </table>
+    </div>
+    
+    <script>
+        function fetchTotalEntries() {
+            fetch('/data?num_entries=1000000') // Fetching a large number to ensure we get all entries
+                .then(response => response.json())
+                .then(data => {
+                    const totalPackets = data.packets.length;
+                    const totalBlacklist = data.blacklist.length;
+
+                    document.getElementById('packetsCircle').textContent = totalPackets;
+                    document.getElementById('blacklistCircle').textContent = totalBlacklist;
+                });
+        }
+
+        function fetchPacketsData(numEntries) {
+            fetch(`/data?num_entries=${numEntries}`)
+                .then(response => response.json())
+                .then(data => {
+                    const packets = data.packets.reverse(); // Reverse to display in the correct order
+
+                    const packetsTable = document.getElementById('packetsTable');
+                    packetsTable.innerHTML = '';
+                    packets.forEach(packet => {
+                        const row = packetsTable.insertRow();
+                        const srcCell = row.insertCell(0);
+                        const dstCell = row.insertCell(1);
+                        const protoCell = row.insertCell(2);
+                        const sportCell = row.insertCell(3);
+                        const dportCell = row.insertCell(4);
+                        const payloadCell = row.insertCell(5);
+                        const statusCell = row.insertCell(6);
+                        srcCell.textContent = packet.src;
+                        dstCell.textContent = packet.dst;
+                        protoCell.textContent = packet.proto;
+                        sportCell.textContent = packet.sport;
+                        dportCell.textContent = packet.dport;
+                        payloadCell.textContent = packet.payload;
+                        statusCell.textContent = packet.status;
+                    });
+                });
+        }
+
+        function fetchBlacklistData(numEntries) {
+            fetch(`/data?num_entries=${numEntries}`)
+                .then(response => response.json())
+                .then(data => {
+                    const blacklist = data.blacklist;
+
+                    const blacklistTable = document.getElementById('blacklistTable');
+                    blacklistTable.innerHTML = '';
+                    blacklist.forEach(entry => {
+                        const row = blacklistTable.insertRow();
+                        const ipCell = row.insertCell(0);
+                        ipCell.textContent = entry.ip;
+                    });
+                });
+        }
+
+        function updateTime() {
+            const currentTime = new Date().toLocaleTimeString();
+            document.getElementById('current-time').textContent = `Current Time: ${currentTime}`;
+        }
+
+        document.getElementById('numEntriesPackets').addEventListener('change', function() {
+            fetchPacketsData(this.value);
+        });
+
+        document.getElementById('numEntriesBlacklist').addEventListener('change', function() {
+            fetchBlacklistData(this.value);
+        });
+
+        setInterval(() => {
+            fetchTotalEntries();
+            const numEntriesPackets = document.getElementById('numEntriesPackets').value;
+            fetchPacketsData(numEntriesPackets);
+
+            const numEntriesBlacklist = document.getElementById('numEntriesBlacklist').value;
+            fetchBlacklistData(numEntriesBlacklist);
+
+            updateTime();
+        }, 1000); // Update every second
+
+        fetchTotalEntries();
+        fetchPacketsData(document.getElementById('numEntriesPackets').value);
+        fetchBlacklistData(document.getElementById('numEntriesBlacklist').value);
+        updateTime();
+    </script>
+</body>
+</html>
+
